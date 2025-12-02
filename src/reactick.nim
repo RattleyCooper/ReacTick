@@ -253,6 +253,14 @@ template watcherIds*(f: ReacTick) =
   var watcherId {.inject.} = f.nextId + 1
   var cbId {.inject.} = f.nextId
 
+proc watcherId*(f: ReacTick): int =
+  # Get the Task ID for the watcher.
+  f.nextId + 1
+
+proc callbackId*(f: ReacTick): int =
+  # Get the Task ID for the callback.
+  f.nextId
+
 macro cancelable*(f: ReacTick, x: untyped): untyped =
   result = newStmtList()
   for statement in x:
