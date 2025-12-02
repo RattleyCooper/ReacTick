@@ -38,10 +38,13 @@ proc frameTime*(frames: int): int =
   ((1 / frames) * 1000).int
 
 template ControlFlow*(f: ReacTick) =
+  # Control flow for ticking. Ensures callbacks don't execute until 
+  # a frame tick is valid.
   if (getMonoTime() - f.last).inMilliseconds < frameTime(f.fps):
     return
 
 proc tick*(f: ReacTick, controlFlow: bool = true) =
+  # Processes callbacks.
   if controlFlow:
     f.ControlFlow()
 
@@ -96,6 +99,7 @@ proc tick*(f: ReacTick, controlFlow: bool = true) =
   f.last = getMonoTime()
 
 proc after*(frames: int, body: proc() {.closure}): OneShot =
+  # Helper proc for creating OneShot callbacks.
   OneShot(
     target: frames.uint,
     frame: 1,
@@ -104,6 +108,7 @@ proc after*(frames: int, body: proc() {.closure}): OneShot =
   )
 
 proc every*(frames: int, body: proc() {.closure.}): MultiShot =
+  # Helper proc for creating MultiShot callbacks.
   MultiShot(
     target: frames.uint,
     frame: 1,
@@ -112,10 +117,12 @@ proc every*(frames: int, body: proc() {.closure.}): MultiShot =
   )
 
 proc run*(f: ReacTick, a: OneShot) =
+  # Register a OneShot with ReacTick
   a.id = f.genId()
   f.oneShots.add a
 
 proc run*(f: ReacTick, e: MultiShot) =
+  # Register a MultiShot with ReacTick
   e.id = f.genId()
   f.multiShots.add e
 
@@ -132,8 +139,7 @@ proc schedule*(f: ReacTick, e: MultiShot): int =
   e.id
 
 proc cancel*(f: ReacTick, id: int) =
-  # Removes closures from the reactick.
-  # Remove from MultiShots
+  # Removes task from ReacTick.
   when defined(debug):
     echo "cancel called with id: ", id
   for i in countdown(f.multiShots.high, 0):
@@ -147,19 +153,20 @@ proc cancel*(f: ReacTick, id: int) =
       return
 
 proc cancel*(f: ReacTick, ids: var seq[int]) =
-  ## Batch cancellation. Removes all tasks in the list and clears the list.
-  ## Usage: clock.cancel(player.tasks)
+  # Batch cancellation. Removes all tasks in the list and clears the list.
   for i in countdown(ids.high, 0):
     f.cancel(ids[i])
   ids.setLen(0)
 
 template cancel*(f: ReacTick): untyped =
+  # Cancel from within a ReacTick.cancelable block.
   when defined(debug):
     echo "Canceling ", watcherId, " and ", cbId
   f.cancel(watcherId)
   f.cancel(cbId)
 
 proc nextIds*(f: ReacTick, amount: int = 2): seq[int] =
+  # Quick grab ids to cancel. Good for adding multiple task ids to a seq.
   result.add f.nextId
   var startingId = f.nextId
   for i in 1..amount:
@@ -238,6 +245,7 @@ template `when`*(f: ReacTick, cond: untyped, o: OneShot): untyped =
       f.cancel(nid)
 
 proc newReacTick*(fps: int, watcherInterval: int = 1): ReacTick =
+  # Create a new ReacTick object!
   var f: ReacTick
   f.new()
   f.fps = fps
@@ -250,6 +258,7 @@ proc newReacTick*(fps: int, watcherInterval: int = 1): ReacTick =
   return f
 
 template watcherIds*(f: ReacTick) =
+  # Used for the ReacTick.cancel macro.
   var watcherId {.inject.} = f.nextId + 1
   var cbId {.inject.} = f.nextId
 
@@ -262,6 +271,8 @@ proc callbackId*(f: ReacTick): int =
   f.nextId
 
 macro cancelable*(f: ReacTick, x: untyped): untyped =
+  # Create a block of watch/when statements that can be easily canceled
+  # from within the watch/when block.
   result = newStmtList()
   for statement in x:
     result.add quote do:
