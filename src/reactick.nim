@@ -3,23 +3,25 @@ export times
 
 type
   OneShot* = ref object
-    id*: int
     body*: proc() {.closure.}
     frame*: uint
     target*: uint
+    id*: int
 
   MultiShot* = ref object
-    id*: int
     body*: proc() {.closure.}
+    frame*: uint
     target*: uint
+    id*: int
 
   ReacTick* = ref object
-    nextId*: int
-    frame*: uint
     multiShots*: seq[MultiShot]
     oneShots*: seq[OneShot]
     last*: MonoTime
+    nextId*: int
     fps*: int
+    frame*: uint
+    watcherInterval*: int = 1
 
 proc clear*(reactick: ReacTick) =
   # Clear the closures from the reactick.
@@ -43,6 +45,11 @@ proc tick*(f: ReacTick, controlFlow: bool = true) =
   if controlFlow:
     f.ControlFlow()
 
+  if f.frame.int > int.high - 2:
+    f.frame = 1
+  else:
+    f.frame += 1
+
   when defined(profileTick):
     var ranProcs = false
     var startTime = getMonoTime()
@@ -50,30 +57,37 @@ proc tick*(f: ReacTick, controlFlow: bool = true) =
   for i in 0..f.multiShots.high: # maintain execution order
     if i > f.multiShots.high:
       break
-    if f.frame mod f.multiShots[i].target == 0 and f.frame != 0:
+    let ms = f.multiShots[i]
+    if ms.frame mod ms.target == 0 and ms.frame != 0:
       f.multiShots[i].body()
+      if i > f.multiShots.high:
+        break
+      f.multiShots[i].frame += 1
       when defined(profileTick):
         ranProcs = true
+    else:
+      f.multiShots[i].frame += 1
           
   # OneShots - after
   var c = 0
   for i in 0..f.oneShots.high: # maintain execution order
     if c > f.oneShots.high:
       break
-    var osh = f.oneShots[c]
+    let osh = f.oneShots[c]
     if osh.frame mod osh.target == 0 and osh.frame != 0:
       f.oneShots[c].body()
+      # Oneshots may remove themselves from the internal sequence
+      # Check c against length to skip removal.
+      if c > f.oneShots.high:
+        when defined(profileTick):
+          ranProcs = true
+        break
       f.oneShots.del(c)
       when defined(profileTick):
         ranProcs = true
     else:
       f.oneShots[c].frame += 1
       c += 1
-
-  if f.frame.int > int.high - 2:
-    f.frame = 1
-  else:
-    f.frame += 1
 
   when defined(profileTick):
     if ranProcs:
@@ -84,7 +98,7 @@ proc tick*(f: ReacTick, controlFlow: bool = true) =
 proc after*(frames: int, body: proc() {.closure}): OneShot =
   OneShot(
     target: frames.uint,
-    frame: 0,
+    frame: 1,
     body: body,
     id: -1
   )
@@ -92,6 +106,7 @@ proc after*(frames: int, body: proc() {.closure}): OneShot =
 proc every*(frames: int, body: proc() {.closure.}): MultiShot =
   MultiShot(
     target: frames.uint,
+    frame: 1,
     body: body,
     id: -1
   )
@@ -138,7 +153,7 @@ proc cancel*(f: ReacTick, ids: var seq[int]) =
     f.cancel(ids[i])
   ids.setLen(0)
 
-template cancel*(f: ReacTick) =
+template cancel*(f: ReacTick): untyped =
   when defined(debug):
     echo "Canceling ", watcherId, " and ", cbId
   f.cancel(watcherId)
@@ -153,14 +168,17 @@ proc nextIds*(f: ReacTick, amount: int = 2): seq[int] =
 
 template watch*(f: ReacTick, cond: untyped, m: MultiShot): untyped =
   # Waits until condition is true before scheduling multishot. Cancels
-  # multishot if the condition isn't true before multishot is called.
+  # multishot once condition is false. Reschedules/cancels based on
+  # condition and requires explicit cancellation. 
+  # Multishot continues to fire while condition is true.
   var triggered = false
   let cbId = f.genId()
-  f.run every(1) do():  
+  f.run every(f.watcherInterval) do():  
     if (`cond`) and not triggered:
       # echo "cbId ", cbId
       f.multiShots.add MultiShot(
         target: m.target,
+        frame: m.frame,
         body: m.body,
         id: cbId
       )
@@ -172,16 +190,17 @@ template watch*(f: ReacTick, cond: untyped, m: MultiShot): untyped =
 template watch*(f: ReacTick, cond: untyped, o: OneShot): untyped =
   # Waits until condition is true before scheduling oneshot. Cancels 
   # oneshot if the condition isn't true before the oneshot is 
-  # called.
+  # called. Watcher must be canceled explicitly.
+  # Oneshot called once per true condition.
   var triggered = false
   let cbId = f.genId()
-  f.run every(1) do():
+  f.run every(f.watcherInterval) do():
     if (`cond`) and not triggered:
       f.oneShots.add OneShot(
         target: o.target,
         body: o.body,
         id: cbId,
-        frame: o.frame
+        frame: o.frame - 1
       )
       triggered = true
     elif not (`cond`) and triggered:
@@ -191,41 +210,34 @@ template watch*(f: ReacTick, cond: untyped, o: OneShot): untyped =
 template `when`*(f: ReacTick, cond: untyped, m: MultiShot): untyped =
   # Triggers multishot when the condition is met. Multishot persists
   # unless canceled explicitly.
-  var triggered = false
   let cbId = f.genId()
   let nid = cbId + 1
-  f.run every(1) do():
-    if (`cond`) and not triggered:
+  f.run every(f.watcherInterval) do():
+    if (`cond`):
       f.multiShots.add MultiShot(
         target: m.target,
+        frame: m.frame,
         body: m.body,
         id: cbId
       )
-      triggered = true
-    # elif triggered:
-    #   f.cancel(nid)
-    #   f.cancel(cbId)
+      f.cancel(nid)
 
 template `when`*(f: ReacTick, cond: untyped, o: OneShot): untyped =
   # Triggers oneshot when the condition is met. Since oneshots terminate
-  # themselves, no canceling is required.'
-  var triggered = false
+  # themselves, no canceling is required.
   let cbId = f.genId()
   var nid = cbId + 1
-  f.run every(1) do():
-    if (`cond`) and not triggered:
+  f.run every(f.watcherInterval) do():
+    if (`cond`):
       f.oneShots.add OneShot(
         target: o.target,
         body: o.body,
         id: cbId,
-        frame: o.frame
+        frame: o.frame - 1
       )
-      triggered = true
-    elif triggered:
       f.cancel(nid)
-      # f.cancel(cbId)
 
-proc newReacTick*(fps: int): ReacTick =
+proc newReacTick*(fps: int, watcherInterval: int = 1): ReacTick =
   var f: ReacTick
   f.new()
   f.fps = fps
@@ -234,6 +246,7 @@ proc newReacTick*(fps: int): ReacTick =
   f.oneShots = newSeq[OneShot]()
   f.last = getMonoTime()
   f.nextId = 1
+  f.watcherInterval = watcherInterval
   return f
 
 template watcherIds*(f: ReacTick) =
