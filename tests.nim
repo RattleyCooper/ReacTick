@@ -238,6 +238,36 @@ suite "Getting IDs Manually":
     clock.tick(false)
     check manId.value == 1
 
+suite "State-Based":
+  test "during":
+    var duringClock = newReacTick(fps=60)
+    var duringObj = newTestObj()
+    duringClock.during duringObj.value == 0:
+      duringObj.value += 1
+    do:
+      duringObj.value += 1
+
+    duringClock.tick(false)
+    duringClock.tick(false)
+    duringClock.tick(false)
+
+    check duringObj.value == 2
+
+  test "pulse":
+    var pulseClock = newReacTick(fps=60)
+    var pulseObj = newTestObj()
+    pulseClock.pulse pulseObj.value == 0:
+      pulseObj.value += 1
+
+    pulseClock.tick(false)
+    pulseClock.tick(false)
+    pulseClock.tick(false)
+
+    check pulseObj.value == 1
+    pulseObj.value = 0
+    pulseClock.tick(false)
+    check pulseObj.value == 1
+
 suite "Timescaling":
   test "Pause / Resume":
     var pauseClock = newReacTick(fps=60)
