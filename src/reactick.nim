@@ -100,7 +100,7 @@ proc tick*(f: ReacTick, controlFlow: bool = true) =
         when defined(profileTick):
           ranProcs = true
         break
-      f.oneShots.del(c)
+      f.oneShots.delete(c)
       when defined(profileTick):
         ranProcs = true
     else:
