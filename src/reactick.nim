@@ -282,7 +282,7 @@ template mode*(f: ReacTick, cond: untyped, onEnter: untyped, onExit: untyped): u
       active = false
       onExit
 
-template pulse*(f: ReacTick, cond: untyped, action: untyped): untyped =
+template toggle*(f: ReacTick, cond: untyped, action: untyped): untyped =
   var active = false
   f.run every(f.watcherInterval) do():
     let conditionMet = (`cond`)
@@ -296,19 +296,12 @@ template pulse*(f: ReacTick, cond: untyped, action: untyped): untyped =
 
 template latch*(f: ReacTick, cond: untyped, action: untyped): untyped =
   var triggered = false
+  let cbId = f.callbackId()
   f.run every(f.watcherInterval) do():
     if (`cond`) and not triggered:
-      active = true
-      action
-
-template toggle*(f: ReacTick, cond: untyped, action: untyped): untyped =
-  var last = false
-  f.run every(f.watcherInterval) do():
-    let now = (`cond`)
-    if now and not last:
       triggered = true
       action
-    last = now
+      f.cancel(cbId)
 
 template cooldown*(f: ReacTick, cond: untyped, interval: int, action: untyped): untyped =
   var ready = true
