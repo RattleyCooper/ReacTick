@@ -259,6 +259,30 @@ template `when`*(f: ReacTick, cond: untyped, o: OneShot): untyped =
       )
       f.cancel(nid)
 
+template during*(f: ReacTick, cond: untyped, onEnter: untyped, onExit: untyped): untyped =
+  var active = false
+  f.run every(f.watcherInterval) do():
+    let conditionMet = (`cond`)
+    
+    if conditionMet and not active:
+      active = true
+      onEnter
+    elif not conditionMet and active:
+      active = false
+      onExit
+
+template pulse*(f: ReacTick, cond: untyped, action: untyped): untyped =
+  var active = false
+  f.run every(f.watcherInterval) do():
+    let conditionMet = (`cond`)
+
+    if conditionMet and not active :
+      active = true
+      action
+    
+    elif not conditionMet:
+      active = false
+
 proc newReacTick*(fps: int = 60, watcherInterval: int = 1): ReacTick =
   # Create a new ReacTick object!
   var f: ReacTick
