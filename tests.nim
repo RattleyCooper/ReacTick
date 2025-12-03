@@ -239,19 +239,19 @@ suite "Getting IDs Manually":
     check manId.value == 1
 
 suite "State-Based":
-  test "during":
-    var duringClock = newReacTick(fps=60)
-    var duringObj = newTestObj()
-    duringClock.during duringObj.value == 0:
-      duringObj.value += 1
+  test "mode":
+    var modeClock = newReacTick(fps=60)
+    var modeObj = newTestObj()
+    modeClock.mode modeObj.value == 0:
+      modeObj.value += 1
     do:
-      duringObj.value += 1
+      modeObj.value += 1
 
-    duringClock.tick(false)
-    duringClock.tick(false)
-    duringClock.tick(false)
+    modeClock.tick(false)
+    modeClock.tick(false)
+    modeClock.tick(false)
 
-    check duringObj.value == 2
+    check modeObj.value == 2
 
   test "pulse":
     var pulseClock = newReacTick(fps=60)

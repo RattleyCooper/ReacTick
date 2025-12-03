@@ -177,12 +177,12 @@ clock.when cat.hunger >= 60, after(60) do():
 
 `when`/`every` -> Only cancels the watcher.
 
-### `during` Schedules a watcher with enter/exit behavior
+### `mode` Schedules a watcher with enter/exit behavior
 
-`during` gives same-frame execution once the condition it's monitoring becomes `true`, and lets you define the exit behavior as well.
+`mode` gives same-frame execution once the condition it's monitoring becomes `true`, and lets you define the exit behavior as well.
 
 ```nim
-clock.during player.inSlowMotionZone:
+clock.mode player.inSlowMotionZone:
   # On Enter
   clock.timescale = 0.5
 do:
@@ -190,7 +190,7 @@ do:
   clock.timescale = 1.0
 ```
 
-`during` acts like `watch`, in that it will only run your code **once** per `true` condition. `during` only runs your exit code **once** per flip to a `false` condition.
+`mode` acts like `watch`, in that it will only run your code **once** per `true` condition. `mode` only runs your exit code **once** per flip to a `false` condition.
 
 ## 🛑 Cancellation (Preventing Crashes)
 
@@ -346,7 +346,7 @@ clock.when enemy.hp <= 0, after(1) do():
 | `watch cond, after(N)` | Once N frames *when cond* is true |❌|✔️ (util cond true again)|❌| `watcherId` & `callbackId` |
 | `when cond, every(N)` | Every N frames `after` condition is true | ❌/✔️ ***Callback* repeats** | ✔️/❌ ***Watcher* self-cancels** | ❌ | `watcherId` & `callbackId` |
 | `when cond, after(N)`| Once |❌| ✔️ **Always self-cancels**|❌| `watcherId` & `callbackId` |
-| `during` | `every(ReacTick.watcherInterval)` | ✔️ | ❌ | ❌ | `callbackId` |
+| `mode` | `every(ReacTick.watcherInterval)` | ✔️ | ❌ | ❌ | `callbackId` |
 
 
 ## 🔒 Cancelable Blocks
@@ -506,9 +506,9 @@ Example: *"learning to swim”*:
 * eventually learns
 * damage behavior never runs again
 
-### `during`
+### `mode`
 
-### ✅ Example: Use `during` to scale time in "slow-mo zone"
+### ✅ Example: Use `mode` to scale time in "slow-mo zone"
 
 `ReacTick` lets you change the speed of your game logic dynamically, allowing for "bullet-time", dynamic difficulty, or changing simulation speeds:
 
@@ -528,10 +528,10 @@ clock.timescale = 0.0  # Frozen
 clock.timescale = 1.0  # Default
 ```
 
-`during` is useful in situations where `watch` would be overkill. `during` sets up a watcher that will monitor a condition once per tick, and execute your entry and exit code in the same watcher.
+`mode` is useful in situations where `watch` would be overkill. `mode` sets up a watcher that will monitor a condition once per tick, and execute your entry and exit code in the same watcher.
 
 ```nim
-clock.during player.inSlowMotionZone:
+clock.mode player.inSlowMotionZone:
   # On Enter, go into slow motion
   clock.timescale = 0.5
 do:
