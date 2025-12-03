@@ -126,21 +126,21 @@ clock.run every(60) incC
 ```
 
 ## 🛠 Core Scheduling Primitives
-`run every(N)` Runs every `N` frames forever.
+### `run every(N)` Runs every `N` frames forever.
 
 ```nim
 clock.run every(120) do():
   enemy.think()
 ```
 
-`run after(N)` Runs *once* after `N` frames.
+### `run after(N)` Runs *once* after `N` frames.
 
 ```nim
 clock.run after(30) do():
   player.fireReady = true
 ```
 
-`schedule` (get a task ID) Useful for cancellation.
+### `schedule` (get a task ID) Useful for cancellation.
 
 ```nim
 let id = clock.schedule after(300) do(): 
@@ -148,7 +148,7 @@ let id = clock.schedule after(300) do():
 clock.cancel(id)
 ```
 
-`watch` Runs callback at desired framerate when condition is met.
+### `watch` Runs callback at desired interval when condition is met.
 
 ```nim
 clock.cancelable:
@@ -163,10 +163,11 @@ clock.cancelable:
 
 > Note: `watch` combined with `after` will only execute code *once* while the condition remains `true`, unlike `every` which gives you *repeating* executions *while* the condition remains `true`.
 
-`when` Runs callbacks when a condition is `true`, then self-destructs the watcher that monitors the condition. Combining `when` with `every` will
-create a watcher, but the callback itself will continue running unless canceled explicitly.
+### `when` Schedule a callback once, when a condition is `true`
+ 
+`when` self-destructs the watcher that monitors the condition when the condition becomes `true`. Combining `when` with `every` will create a watcher, but the callback itself will continue running unless canceled explicitly.
 
-`when`/`after` -> Cancels the watcher and the callback
+`when`/`after` -> Cancels the watcher and the callback automatically.
 
 ```nim
 # Cats will learn to hunt *once* the first time they reach starving condition
@@ -175,6 +176,21 @@ clock.when cat.hunger >= 60, after(60) do():
 ```
 
 `when`/`every` -> Only cancels the watcher.
+
+### `during` Schedules a watcher with enter/exit behavior
+
+`during` gives same-frame execution once the condition it's monitoring becomes `true`, and lets you define the exit behavior as well.
+
+```nim
+clock.during player.inSlowMotionZone:
+  # On Enter
+  clock.timescale = 0.5
+do:
+  # On Exit
+  clock.timescale = 1.0
+```
+
+`during` acts like `watch`, in that it will only run your code **once** per `true` condition. `during` only runs your exit code **once** per flip to a `false` condition.
 
 ## 🛑 Cancellation (Preventing Crashes)
 
@@ -330,7 +346,7 @@ clock.when enemy.hp <= 0, after(1) do():
 | `watch cond, after(N)` | Once N frames *when cond* is true |❌|✔️ (util cond true again)|❌| `watcherId` & `callbackId` |
 | `when cond, every(N)` | Every N frames `after` condition is true | ❌/✔️ ***Callback* repeats** | ✔️/❌ ***Watcher* self-cancels** | ❌ | `watcherId` & `callbackId` |
 | `when cond, after(N)`| Once |❌| ✔️ **Always self-cancels**|❌| `watcherId` & `callbackId` |
-
+| `during` | `every(ReacTick.watcherInterval)` | ✔️ | ❌ | ❌ | `callbackId` |
 
 
 ## 🔒 Cancelable Blocks
@@ -489,6 +505,40 @@ Example: *"learning to swim”*:
 * take damage
 * eventually learns
 * damage behavior never runs again
+
+### `during`
+
+### ✅ Example: Use `during` to scale time in "slow-mo zone"
+
+`ReacTick` lets you change the speed of your game logic dynamically, allowing for "bullet-time", dynamic difficulty, or changing simulation speeds:
+
+```nim
+var clock = newReacTick(fps=60)
+
+# Slow motion
+clock.timescale = 0.5  # Half speed
+
+# 2x speed
+clock.timescale = 2.0  # Double speed
+
+# Pause
+clock.timescale = 0.0  # Frozen
+
+# Normal
+clock.timescale = 1.0  # Default
+```
+
+`during` is useful in situations where `watch` would be overkill. `during` sets up a watcher that will monitor a condition once per tick, and execute your entry and exit code in the same watcher.
+
+```nim
+clock.during player.inSlowMotionZone:
+  # On Enter, go into slow motion
+  clock.timescale = 0.5
+do:
+  # On Exit, return to normal speed
+  clock.timescale = 1.0
+```
+
 
 ## 🐈 Full Example
 
