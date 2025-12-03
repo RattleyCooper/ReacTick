@@ -18,10 +18,20 @@ type
     multiShots*: seq[MultiShot]
     oneShots*: seq[OneShot]
     last*: MonoTime
-    nextId*: int
-    fps*: int
+    timescale*: float = 1.0
+    previousTimescale*: float = 1.0
+    nextId*: int = 0
+    fps*: int = 60
     frame*: uint
+    frameDuration*: int
     watcherInterval*: int = 1
+
+proc pause*(r: ReacTick) =
+  r.previousTimescale = r.timescale
+  r.timescale = 0.0
+
+proc resume*(r: ReacTick) =
+  r.timescale = r.previousTimescale
 
 proc clear*(reactick: ReacTick) =
   # Clear the closures from the reactick.
@@ -35,16 +45,21 @@ proc genId*(reactick: ReacTick): int =
 
 proc frameTime*(frames: int): int =
   # Calculate frames per second.
-  ((1 / frames) * 1000).int
+  1_000_000 div frames
+
+proc targetUs*(r: ReacTick): int =
+  (r.frameDuration.float / r.timescale).int
 
 template ControlFlow*(f: ReacTick) =
   # Control flow for ticking. Ensures callbacks don't execute until 
   # a frame tick is valid.
-  if (getMonoTime() - f.last).inMilliseconds < frameTime(f.fps):
+  if (getMonoTime() - f.last).inMicroseconds < f.targetUs():
     return
 
 proc tick*(f: ReacTick, controlFlow: bool = true) =
   # Processes callbacks.
+  if f.timescale == 0.0:
+    return
   if controlFlow:
     f.ControlFlow()
 
@@ -244,7 +259,7 @@ template `when`*(f: ReacTick, cond: untyped, o: OneShot): untyped =
       )
       f.cancel(nid)
 
-proc newReacTick*(fps: int, watcherInterval: int = 1): ReacTick =
+proc newReacTick*(fps: int = 60, watcherInterval: int = 1): ReacTick =
   # Create a new ReacTick object!
   var f: ReacTick
   f.new()
@@ -253,8 +268,10 @@ proc newReacTick*(fps: int, watcherInterval: int = 1): ReacTick =
   f.multiShots = newSeq[MultiShot]()
   f.oneShots = newSeq[OneShot]()
   f.last = getMonoTime()
-  f.nextId = 1
+  f.nextId = 0
   f.watcherInterval = watcherInterval
+  f.timescale = 1.0
+  f.frameDuration = frameTime(f.fps)
   return f
 
 template watcherIds*(f: ReacTick) =

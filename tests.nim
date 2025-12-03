@@ -5,7 +5,7 @@ type
   TestObj = ref object
     value: int
 
-var clock = ReacTick(fps:60)
+var clock = newReacTick(fps=60)
 
 proc newTestObj(): TestObj =
   result.new()
@@ -31,19 +31,19 @@ suite "Run":
     clock.run every(1) do():
       runEvery.value += 1
 
-    clock.tick()
-    assert clock.multiShots.len == 1
-    assert runEvery.value == 1
+    clock.tick(false)
+    check clock.multiShots.len == 1
+    check runEvery.value == 1
 
   test "After":
     # --- Run After ---
     clock.run after(1) do():
       runAfter.value += 1
 
-    assert clock.oneShots.len == 1
+    check clock.oneShots.len == 1
     clock.tick(false)
-    assert runAfter.value == 1
-    assert clock.oneShots.len == 0
+    check runAfter.value == 1
+    check clock.oneShots.len == 0
 
 suite "Schedule":
   test "Every":
@@ -51,24 +51,24 @@ suite "Schedule":
     let schEv = clock.schedule every(1) do():
       scheduleEvery.value += 1
 
-    assert schEv == 2
-    assert clock.multiShots.len == 2
+    check schEv == 2
+    check clock.multiShots.len == 2
     clock.tick(false)
-    assert scheduleEvery.value == 1
+    check scheduleEvery.value == 1
     clock.cancel(schEv)
-    assert clock.multiShots.len == 1
+    check clock.multiShots.len == 1
   
   test "After":
     # --- Schedule After ---
     let schAf = clock.schedule after(1) do():
       scheduleAfter.value += 1
 
-    assert schAf == 3
-    assert clock.oneShots.len == 1
+    check schAf == 3
+    check clock.oneShots.len == 1
     clock.tick(false)
-    assert scheduleAfter.value == 1
+    check scheduleAfter.value == 1
     clock.cancel(schAf)
-    assert clock.oneShots.len == 0
+    check clock.oneShots.len == 0
 
 suite "Watch":
   test "Every":
@@ -76,28 +76,28 @@ suite "Watch":
     clock.watch watchEvery.value == 0, every(1) do():
       watchEvery.value += 1
 
-    assert clock.multiShots.len == 2
+    check clock.multiShots.len == 2
     # trigger evaluation of condition
     clock.tick(false)
-    assert clock.multiShots.len == 3
-    assert watchEvery.value == 0
+    check clock.multiShots.len == 3
+    check watchEvery.value == 0
     # trigger callback
     clock.tick(false)
-    assert watchEvery.value == 1
+    check watchEvery.value == 1
   
   test "After":
     # --- Watch After ---
     clock.watch watchAfter.value == 0, after(1) do():
       watchAfter.value += 1
 
-    assert clock.multiShots.len == 4
+    check clock.multiShots.len == 4
     # Evaluate condition
     clock.tick(false)
-    assert clock.oneShots.len == 1
-    assert watchAfter.value == 0
+    check clock.oneShots.len == 1
+    check watchAfter.value == 0
     # trigger callback
     clock.tick(false)
-    assert watchAfter.value == 1
+    check watchAfter.value == 1
 
 suite "When":
   test "Every":
@@ -105,27 +105,27 @@ suite "When":
     clock.when whenEvery.value == 0, every(1) do():
       whenEvery.value += 1
 
-    assert clock.multiShots.len == 4
+    check clock.multiShots.len == 4
     # trigger condition / watcher removed.
     clock.tick(false)
-    assert clock.multiShots.len == 4
-    assert whenEvery.value == 0
+    check clock.multiShots.len == 4
+    check whenEvery.value == 0
     # trigger callback
     clock.tick(false)
-    assert whenEvery.value == 1
+    check whenEvery.value == 1
 
   test "After":
     # --- When After ---
     clock.when whenAfter.value == 0, after(1) do():
       whenAfter.value += 1
 
-    assert clock.multiShots.len == 5
+    check clock.multiShots.len == 5
     # trigger condition / watcher removed.
     clock.tick(false)
-    assert clock.multiShots.len == 4
-    assert whenAfter.value == 0
+    check clock.multiShots.len == 4
+    check whenAfter.value == 0
     clock.tick(false)
-    assert whenAfter.value == 1
+    check whenAfter.value == 1
 
 suite "Cancelable Watch":
   test "Every":
@@ -135,19 +135,19 @@ suite "Cancelable Watch":
         watchEveryC.value += 1
         clock.cancel()
 
-    assert clock.multiShots.len == 5
+    check clock.multiShots.len == 5
     # trigger evaluation of condition
     clock.tick(false)
-    assert clock.multiShots.len == 6
-    assert watchEveryC.value == 0
+    check clock.multiShots.len == 6
+    check watchEveryC.value == 0
     # trigger callback which removes watcher
     clock.tick(false)
-    assert watchEveryC.value == 1
+    check watchEveryC.value == 1
     # make sure they're removed
     clock.tick(false)
     clock.tick(false)
-    assert clock.multiShots.len == 4
-    assert watchEveryC.value == 1
+    check clock.multiShots.len == 4
+    check watchEveryC.value == 1
 
   test "After":
     # --- Cancelable Watch After ---
@@ -156,21 +156,21 @@ suite "Cancelable Watch":
         watchAfterC.value += 1
         clock.cancel()
 
-    assert clock.multiShots.len == 5
+    check clock.multiShots.len == 5
     # Evaluate condition
     clock.tick(false)
-    assert clock.oneShots.len == 1
-    assert watchAfterC.value == 0
+    check clock.oneShots.len == 1
+    check watchAfterC.value == 0
     # trigger callback which removes watcher.
     clock.tick(false)
-    assert watchAfterC.value == 1
-    assert clock.oneShots.len == 0
+    check watchAfterC.value == 1
+    check clock.oneShots.len == 0
     # make sure they're removed
     clock.tick(false)
     clock.tick(false)
-    assert clock.multiShots.len == 4
-    assert clock.oneShots.len == 0
-    assert watchAfterC.value == 1
+    check clock.multiShots.len == 4
+    check clock.oneShots.len == 0
+    check watchAfterC.value == 1
 
 suite "Cancelable When":
   test "Every":
@@ -180,20 +180,20 @@ suite "Cancelable When":
         whenEveryC.value += 1
         clock.cancel()
 
-    assert clock.multiShots.len == 5
+    check clock.multiShots.len == 5
     # trigger condition / watcher removed.
     clock.tick(false)
-    assert clock.multiShots.len == 5
-    assert whenEveryC.value == 0
+    check clock.multiShots.len == 5
+    check whenEveryC.value == 0
     # trigger callback which removes callback
     clock.tick(false)
-    assert whenEveryC.value == 1
-    assert clock.multiShots.len == 4
+    check whenEveryC.value == 1
+    check clock.multiShots.len == 4
     # Make sure they're removed.
     clock.tick(false)
     clock.tick(false)
-    assert clock.multiShots.len == 4
-    assert whenEveryC.value == 1
+    check clock.multiShots.len == 4
+    check whenEveryC.value == 1
   
   test "After":
     # --- Cancelable When After ---
@@ -202,21 +202,21 @@ suite "Cancelable When":
         whenAfterC.value += 1
         clock.cancel()
 
-    assert clock.multiShots.len == 5
+    check clock.multiShots.len == 5
     # trigger condition / watcher removed.
     clock.tick(false)
-    assert clock.multiShots.len == 4
-    assert clock.oneShots.len == 1
-    assert whenAfterC.value == 0
+    check clock.multiShots.len == 4
+    check clock.oneShots.len == 1
+    check whenAfterC.value == 0
     # trigger callback
     clock.tick(false)
-    assert clock.multiShots.len == 4
-    assert clock.oneShots.len == 0
-    assert whenAfterC.value == 1
+    check clock.multiShots.len == 4
+    check clock.oneShots.len == 0
+    check whenAfterC.value == 1
     # Make sure it's removed
     clock.tick(false)
     clock.tick(false)
-    assert whenAfterC.value == 1
+    check whenAfterC.value == 1
 
 var manId = newTestObj()
 suite "Getting IDs Manually":
@@ -226,18 +226,63 @@ suite "Getting IDs Manually":
     clock.watch manId.value == 0, every(1) do():
       manId.value += 1
 
-    assert clock.multiShots.len == 5
+    check clock.multiShots.len == 5
     clock.tick(false)
     clock.cancel(wa1)
-    assert clock.multiShots.len == 5
-    assert manId.value == 0
+    check clock.multiShots.len == 5
+    check manId.value == 0
     clock.tick(false)
-    assert manId.value == 1
+    check manId.value == 1
     clock.cancel(cb1)
-    assert clock.multiShots.len == 4
+    check clock.multiShots.len == 4
     clock.tick(false)
-    assert manId.value == 1
+    check manId.value == 1
+
+suite "Timescaling":
+  test "Pause / Resume":
+    var pauseClock = newReacTick(fps=60)
+    var counter = 0
+    pauseClock.run every(1) do():
+      counter += 1
+      if counter == 5 or counter == 15:
+        pauseClock.pause()
+
+    while pauseClock.timescale != 0.0:
+      pauseClock.tick()
+
+    check counter == 5
+    pauseClock.tick(false)
+    pauseClock.tick(false)
     
+    check counter == 5
+    pauseClock.resume()
+
+    pauseClock.tick(false)
+    pauseClock.tick(false)
+    
+    check counter == 7
+
+  test "Correct Timescale":
+    var tsClock = newReacTick(fps=60)
+    var c = 0
+    let cbId = clock.callbackId()
+    tsClock.run every(60) do():
+      c += 1
+      if c == 1:
+        echo "2x slower..."
+        tsClock.timescale = 0.5
+        check tsClock.targetUs() == 33_332
+      if c == 6:
+        echo "2x faster..."
+        tsClock.timescale = 2.0 
+        check tsClock.targetUs() == 8_333
+      if c == 10:
+        tsClock.cancel cbId
+      echo c
+    while c < 10:
+      tsClock.tick()
+
+
 # Run the sim for 5 seconds.
 var t = 0
 clock.run every(60) do():
@@ -253,26 +298,26 @@ while t < 5:
 
 suite "Ending States":
   test "MultiShot Count":
-    assert clock.multiShots.len == 5
+    check clock.multiShots.len == 5
     
   test "OneShot Count":
-    assert clock.oneShots.len == 0
+    check clock.oneShots.len == 0
 
   test "Clear Callbacks":
     clock.clear()
-    assert clock.multiShots.len == 0
-    assert clock.oneShots.len == 0
+    check clock.multiShots.len == 0
+    check clock.oneShots.len == 0
 
   test "Check Values":
-    assert runEvery.value == 331
-    assert runAfter.value == 1
-    assert scheduleEvery.value == 1
-    assert scheduleAfter.value == 1
-    assert watchEvery.value == 1
-    assert watchAfter.value == 1
-    assert whenEvery.value == 322
-    assert whenAfter.value == 1
-    assert watchEveryC.value == 1
-    assert watchAfterC.value == 1
-    assert whenEveryC.value == 1
-    assert whenAfterC.value == 1
+    check runEvery.value == 331
+    check runAfter.value == 1
+    check scheduleEvery.value == 1
+    check scheduleAfter.value == 1
+    check watchEvery.value == 1
+    check watchAfter.value == 1
+    check whenEvery.value == 322
+    check whenAfter.value == 1
+    check watchEveryC.value == 1
+    check watchAfterC.value == 1
+    check whenEveryC.value == 1
+    check whenAfterC.value == 1
