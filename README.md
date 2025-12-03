@@ -76,7 +76,7 @@ You just tell it *when* and *what* to run.
 ```nim
 import reactick
 
-var clock = ReacTick(fps: 60)
+var clock = newReacTick(fps=60)
 
 clock.run every(60) do():  # every 1 second at 60fps
   echo "One second passed!"
@@ -197,7 +197,7 @@ proc newCat(name: string): Cat =
   result.new()
   result.name = name
 
-var clock = ReacTick(fps: 60)
+var clock = newReacTick(fps=60)
 var scrubs = newCat("Scrubs")
 
 # Schedule a task for the future
@@ -241,7 +241,7 @@ use the id within a callback explicitly.
 
 ## ✔️👍 Getting Task ID Correctly 
 ```nim
-var clock = ReacTick(fps: 60)
+var clock = newReacTick(fps=60)
 
 # Get callback id from outside callback scope
 let cb1 = clock.callbackId()
@@ -251,7 +251,7 @@ clock.run every(60) do():
 ```
 ## ❌👎 Getting Task ID INCORRECTLY
 ```nim
-var clock = ReacTick(fps: 60)
+var clock = newReacTick(fps=60)
 
 # INCORRECT! This will lead to 
 clock.run every(60) do():
@@ -497,7 +497,7 @@ if isMainModule:
   # The fps value defines your logical update 
   # rate. every(60) means ‘every 60 logical 
   # frames’, not real-time seconds.
-  var clock = ReacTick(fps: 60)
+  var clock = newReacTick(fps=60)
 
   type 
     Cat = ref object
