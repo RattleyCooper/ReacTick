@@ -2,6 +2,12 @@ import std/[monotimes, times, macros]
 export times
 
 type
+  Mutable*[T] = ref object
+    value*: T
+
+  TimeControl* = ref object
+    scale*: Mutable[float]
+
   OneShot* = ref object
     body*: proc() {.closure.}
     frame*: uint
@@ -18,8 +24,8 @@ type
     multiShots*: seq[MultiShot]
     oneShots*: seq[OneShot]
     last*: MonoTime
-    timescale*: float = 1.0
-    previousTimescale*: float = 1.0
+    time*: TimeControl
+    previousTime*: TimeControl
     nextId*: int = 0
     fps*: int = 60
     frame*: uint
@@ -27,11 +33,11 @@ type
     watcherInterval*: int = 1
 
 proc pause*(r: ReacTick) =
-  r.previousTimescale = r.timescale
-  r.timescale = 0.0
+  r.previousTime.scale.value = r.time.scale.value
+  r.time.scale.value = 0.0
 
 proc resume*(r: ReacTick) =
-  r.timescale = r.previousTimescale
+  r.time.scale.value = r.previousTime.scale.value
 
 proc clear*(reactick: ReacTick) =
   # Clear the closures from the reactick.
@@ -48,7 +54,7 @@ proc frameTime*(frames: int): int =
   1_000_000 div frames
 
 proc targetUs*(r: ReacTick): int =
-  (r.frameDuration.float / r.timescale).int
+  (r.frameDuration.float / r.time.scale.value).int
 
 template ControlFlow*(f: ReacTick) =
   # Control flow for ticking. Ensures callbacks don't execute until 
@@ -58,7 +64,7 @@ template ControlFlow*(f: ReacTick) =
 
 proc tick*(f: ReacTick, controlFlow: bool = true) =
   # Processes callbacks.
-  if f.timescale == 0.0:
+  if f.time.scale.value == 0.0:
     return
   if controlFlow:
     f.ControlFlow()
@@ -287,7 +293,7 @@ template toggle*(f: ReacTick, cond: untyped, action: untyped): untyped =
   f.run every(f.watcherInterval) do():
     let conditionMet = (`cond`)
 
-    if conditionMet and not active :
+    if conditionMet and not active:
       active = true
       action
     
@@ -312,6 +318,19 @@ template cooldown*(f: ReacTick, cond: untyped, interval: int, action: untyped): 
       f.run after(interval) do():
         ready = true
 
+template reactVar*(f: ReacTick, variable: untyped, body: untyped): untyped =
+  var oldValue = `variable`
+  f.run every(f.watcherInterval) do():
+    let newValue = `variable`
+    if newValue != oldValue:
+      oldValue = newValue
+      let it {.inject.} = newValue
+      body
+
+proc mutable*[T](value: T): Mutable[T] =
+  result.new()
+  result.value = value
+
 proc newReacTick*(fps: int = 60, watcherInterval: int = 1): ReacTick =
   # Create a new ReacTick object!
   var f: ReacTick
@@ -323,7 +342,8 @@ proc newReacTick*(fps: int = 60, watcherInterval: int = 1): ReacTick =
   f.last = getMonoTime()
   f.nextId = 0
   f.watcherInterval = watcherInterval
-  f.timescale = 1.0
+  f.time = TimeControl(scale: mutable(1.0))
+  f.previousTime = TimeControl(scale: mutable(1.0))
   f.frameDuration = frameTime(f.fps)
   return f
 
