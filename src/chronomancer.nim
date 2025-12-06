@@ -179,6 +179,10 @@ proc cancel*(f: Chronomancer, ids: var seq[int]) =
     f.cancel(ids[i])
   ids.setLen(0)
 
+proc cancel*(f: Chronomancer, ids: tuple) =
+  for id in ids.fields:
+    f.cancel(id)
+
 template cancel*(f: Chronomancer): untyped =
   # Cancel from within a Chronomancer.cancelable block.
   when defined(debug):
