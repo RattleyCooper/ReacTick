@@ -14,7 +14,7 @@ Chronomancer is a frame-based temporal engine for games, simulations, and AI, de
 
 * Keep your code clean and minimal.
 
-Think of it as a *temporal scripting language* embedded in Nim—one library to handle everything from animations to AI state and reversible gameplay.
+Think of it as a *temporal scripting language* embedded in Nim. One library to handle everything from animations to AI state and reversible gameplay.
 
 It gives you:
 
