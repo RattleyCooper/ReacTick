@@ -1,10 +1,20 @@
 # 🧙‍♂️ Chronomancer ⏱️
 
-> Time is not a loop, it’s a dimension of state. This library lets you reason about it declaratively.
+> Time is not just a loop—it’s a manipulable dimension of state. Chronomancer lets you reason about it declaratively.
 
-Deterministic frame-based scheduling for games, AI, and simulations.
+Chronomancer is a frame-based temporal engine for games, simulations, and AI, designed to let you:
 
-Chronomancer is a tiny, fast, deterministic scheduler for running closures every `N` frames or after `N` frames, with *reactive scheduling conditions* that execute code when conditions are met.
+* Handle state transitions easily
+
+* Schedule conditional logic
+
+* Bind state to frames declaratively. Snap your game objects to a timeline with Entangled values that automatically update or rewind.
+
+* Rewind, replay, or jump in time. Reverse a time at will or step through frames manually, with deterministic results.
+
+* Keep your code clean and minimal.
+
+Think of it as a *temporal scripting language* embedded in Nim—one library to handle everything from animations to AI state and reversible gameplay.
 
 It gives you:
 
