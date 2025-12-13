@@ -5,6 +5,10 @@ type
   Entangled*[T] = ref object
     value*: T
 
+  TickMode* = enum
+    tmQuantized,
+    tmPhaseLocked
+
   TimeControl* = ref object
     scale*: Entangled[float]
 
@@ -26,6 +30,7 @@ type
     last*: MonoTime
     time*: TimeControl
     previousTime*: TimeControl
+    mode*: TickMode
     nextId*: int = 0
     fps*: int = 60
     frame*: uint
@@ -197,7 +202,11 @@ proc tick*(f: Chronomancer, controlFlow: bool = true) =
     if ranProcs:
       echo "Total Timeframe: ", (getMonoTime() - startTime)
 
-  f.last = getMonoTime()
+  case f.mode
+  of tmQuantized:
+    f.last = getMonoTime()
+  of tmPhaseLocked:
+    f.last = f.last + initDuration(microseconds = f.targetUs())
 
 proc after*(frames: int, body: proc() {.closure}): OneShot =
   # Helper proc for creating OneShot callbacks.
@@ -442,7 +451,7 @@ proc entangled*[T](value: T): Entangled[T] =
   result.new()
   result.value = value
 
-proc newChronomancer*(fps: int = 60, watcherInterval: int = 1): Chronomancer =
+proc newChronomancer*(fps: int = 60, watcherInterval: int = 1, mode: TickMode = tmQuantized): Chronomancer =
   # Create a new Chronomancer object!
   var f: Chronomancer
   f.new()
@@ -456,6 +465,7 @@ proc newChronomancer*(fps: int = 60, watcherInterval: int = 1): Chronomancer =
   f.time = TimeControl(scale: entangled(1.0))
   f.previousTime = TimeControl(scale: entangled(1.0))
   f.frameDuration = frameTime(f.fps)
+  f.mode = mode
   return f
 
 template watcherIds*(f: Chronomancer) =
